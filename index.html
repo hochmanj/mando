@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Guitar → Mandolin Tab Converter</title>
+    <link rel="stylesheet" href="style.css" />
+  </head>
+  <body>
+    <div class="container">
+      <header>
+        <h1>Guitar → Mandolin</h1>
+        <p class="subtitle">Paste guitar tab, get mandolin tab</p>
+      </header>
+
+      <nav class="nav-bar">
+        <button class="nav-tab active" onclick="switchView('converter')">Converter</button>
+        <button class="nav-tab" onclick="switchView('library')">Library</button>
+      </nav>
+
+      <div id="view-converter">
+        <div class="info-bar">
+          <div class="tuning">
+            <span class="tuning-label">Guitar:</span> <span id="guitar-tuning-display">E A D G B e</span>
+          </div>
+          <span class="arrow">→</span>
+          <div class="tuning">
+            <span class="tuning-label">Mandolin:</span> G D A E
+          </div>
+        </div>
+
+        <div class="editor">
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Guitar Tab</h2>
+              <div class="panel-actions">
+                <button onclick="showImport()">Import</button>
+                <button onclick="loadSample()">Sample</button>
+                <button onclick="clearAll()">Clear</button>
+              </div>
+            </div>
+            <textarea
+              id="guitar-input"
+              spellcheck="false"
+              placeholder="Paste guitar tab here...
+
+e|---0---2---3---|
+B|---1---3---0---|
+G|---0---2---0---|
+D|---2---0---0---|
+A|---3---x---2---|
+E|---x---x---3---|"
+            ></textarea>
+          </div>
+
+          <div class="panel">
+            <div class="panel-header">
+              <h2>Mandolin Tab</h2>
+              <div class="panel-actions">
+                <button onclick="saveSong()">Save</button>
+                <button id="copy-btn" onclick="copyOutput()">Copy</button>
+              </div>
+            </div>
+            <div
+              id="mandolin-output"
+              class="output-container"
+            ></div>
+          </div>
+        </div>
+
+        <div id="warnings" class="warnings"></div>
+
+        <details class="reference">
+          <summary>How it works</summary>
+          <div class="reference-content">
+            <p>
+              Each note in the guitar tab is converted to its pitch (MIDI value),
+              then mapped to the closest fret position on the mandolin.
+            </p>
+            <ul>
+              <li>
+                Notes below the mandolin's range (below G3) are automatically
+                <strong>transposed up one octave</strong>.
+              </li>
+              <li>
+                Notes that can't be reached even after transposition are
+                <strong>dropped</strong> with a warning.
+              </li>
+              <li>
+                The converter picks the <strong>lowest fret</strong> available for
+                each note.
+              </li>
+              <li>Maximum fret used: <strong>15</strong>.</li>
+            </ul>
+          </div>
+        </details>
+      </div>
+
+      <div id="view-library" class="hidden">
+        <div class="library-toolbar">
+          <input
+            type="text"
+            id="library-search"
+            class="library-search"
+            placeholder="Search songs..."
+            oninput="filterLibrary()"
+          />
+          <div class="library-toolbar-actions">
+            <button onclick="exportLibrary()">Export</button>
+            <button onclick="document.getElementById('library-import-file').click()">Import</button>
+            <input type="file" id="library-import-file" accept=".json" style="display:none" onchange="importLibrary(event)" />
+          </div>
+        </div>
+        <div class="library-layout">
+          <aside class="library-sidebar">
+            <div id="library-tree"></div>
+          </aside>
+          <main class="library-main">
+            <div id="library-detail"></div>
+          </main>
+        </div>
+      </div>
+    </div>
+
+    <div id="import-modal" class="modal-overlay hidden" onclick="hideImport(event)">
+      <div class="modal">
+        <div class="modal-header">
+          <h3>Import from Ultimate Guitar</h3>
+          <button onclick="hideImport()">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="import-steps">
+            <p class="modal-step"><strong>1.</strong> On the UG tab page, open Safari's Console:<br><span class="modal-hint">Develop → Show JavaScript Console (or Cmd+Option+C)</span></p>
+            <p class="modal-step"><strong>2.</strong> Paste this command and press Enter:</p>
+            <div class="console-snippet-wrap">
+              <code id="console-snippet" class="console-snippet"></code>
+              <button class="snippet-copy-btn" onclick="copySnippet()">Copy</button>
+            </div>
+            <p class="modal-step"><strong>3.</strong> Come back here and paste the result:</p>
+          </div>
+          <div class="import-divider">Or upload a Guitar Pro file</div>
+          <div class="gp-upload-area">
+            <input type="file" id="gp-file-input" accept=".gpx,.gp,application/octet-stream,*/*" />
+            <label for="gp-file-input">Choose .gpx file</label>
+          </div>
+          <textarea
+            id="import-text"
+            spellcheck="false"
+            rows="8"
+            placeholder="Paste the copied JSON here..."
+          ></textarea>
+          <div class="modal-actions">
+            <button class="btn-accent" onclick="doImport()">Import &amp; Save</button>
+            <button onclick="importToEditor()">Load Only</button>
+            <button onclick="hideImport()">Cancel</button>
+          </div>
+          <div id="import-status" class="import-status"></div>
+          <details class="import-alt">
+            <summary>Or paste tab text manually</summary>
+            <p class="modal-step">For plain-text tabs, paste directly. Fill in the details below.</p>
+            <div class="import-fields">
+              <div class="import-field-row">
+                <div class="import-field">
+                  <label for="import-artist">Artist</label>
+                  <input type="text" id="import-artist" placeholder="Artist name" />
+                </div>
+                <div class="import-field">
+                  <label for="import-name">Song</label>
+                  <input type="text" id="import-name" placeholder="Song name" />
+                </div>
+              </div>
+              <div class="import-field-row">
+                <div class="import-field">
+                  <label for="import-tabby">Tab by</label>
+                  <input type="text" id="import-tabby" placeholder="Username (optional)" />
+                </div>
+                <div class="import-field">
+                  <label for="import-tabsource">Source</label>
+                  <input type="text" id="import-tabsource" placeholder="e.g. ultimate-guitar" />
+                </div>
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+    </div>
+
+    <script src="gp-parser.js"></script>
+    <script src="app.js"></script>
+  </body>
+</html>
