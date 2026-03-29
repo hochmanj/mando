@@ -666,11 +666,13 @@ function assignNotesToStrings(noteOptions, prevFret = null) {
     // 3. Prefer open strings
     if (score.openCount > bestScore.openCount) return true;
     if (score.openCount < bestScore.openCount) return false;
+    // 4. Minimize total fret distance (prefer lower frets / avoid climbing high on one string)
+    if (score.fretSum < bestScore.fretSum) return true;
+    if (score.fretSum > bestScore.fretSum) return false;
     // 5. Minimize melody distance from previous note
     if (score.melodyDistance < bestScore.melodyDistance) return true;
     if (score.melodyDistance > bestScore.melodyDistance) return false;
-    // 6. Minimize total fret distance
-    return score.fretSum < bestScore.fretSum;
+    return false;
   }
 
   function backtrack(idx, assignment, usedStrings) {
