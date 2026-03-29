@@ -703,8 +703,9 @@ function assignNotesToStrings(noteOptions, prevFret = null) {
 }
 
 // Convert guitar events to mandolin events
-function convertToMandolin(events, capo, tuning) {
+function convertToMandolin(events, capo, tuning, transpose) {
   capo = capo || 0;
+  transpose = transpose || 0;
   // Build tuning lookup: string name → MIDI value
   const stringOrder = ["E", "A", "D", "G", "B", "e"];
   const activeTuning = {};
@@ -725,7 +726,7 @@ function convertToMandolin(events, capo, tuning) {
       if (fret === null || fret === "x") continue;
       const openMidi = activeTuning[guitarString];
       if (openMidi === undefined) continue;
-      const midi = openMidi + capo + fret;
+      const midi = openMidi + capo + fret + transpose;
       if (midi < lowestMidi) lowestMidi = midi;
     }
   }
@@ -761,7 +762,7 @@ function convertToMandolin(events, capo, tuning) {
       const openMidi = activeTuning[guitarString];
       if (openMidi === undefined) continue;
 
-      const midi = openMidi + capo + fret + octaveShift;
+      const midi = openMidi + capo + fret + transpose + octaveShift;
 
       const options = midiToMandolinOptions(midi);
       if (options.length > 0) {
@@ -1481,7 +1482,8 @@ function renderSongList(songs) {
 }
 
 // ── Performer View (song detail) ──────────────────────────────────────
-function viewSong(id) {
+function viewSong(id, transpose) {
+  transpose = transpose || 0;
   const songs = getLibrary();
   const song = songs.find((s) => s.id === id);
   if (!song) return;
@@ -1491,7 +1493,7 @@ function viewSong(id) {
   let html = "";
   for (const block of parsed.blocks) {
     if (block.type === "tab") {
-      const mandolin = convertToMandolin(block.events, parsed.capo, parsed.tuning);
+      const mandolin = convertToMandolin(block.events, parsed.capo, parsed.tuning, transpose);
       html += renderTabBlock(mandolin.events, block.chords, block.inputFirstLine);
     } else if (block.type === "chordlyric") {
       html += renderChordLyricBlock(block.chords, block.lyrics);
@@ -1553,6 +1555,11 @@ function viewSong(id) {
         <button onclick="editSong(${song.id})">Edit</button>
         <button onclick="loadToConverter(${song.id})">Open in Converter</button>
         <button onclick="deleteSong(${song.id})">Delete</button>
+        <div class="transpose-control">
+          <button onclick="viewSong(${song.id}, ${transpose - 1})">−</button>
+          <span class="transpose-value">${transpose > 0 ? "+" : ""}${transpose}</span>
+          <button onclick="viewSong(${song.id}, ${transpose + 1})">+</button>
+        </div>
       </div>
     </div>
     <div class="song-detail-output">${html || '<div class="library-empty">No tab content</div>'}</div>`;
